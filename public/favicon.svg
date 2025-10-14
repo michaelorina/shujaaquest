@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Kenyan flag inspired favicon -->
+  <rect width="100" height="100" fill="#0b0d10"/>
+  
+  <!-- Shield/badge shape -->
+  <path d="M50 10 L80 30 L80 60 Q80 80 50 90 Q20 80 20 60 L20 30 Z" fill="#111418" stroke="#16a34a" stroke-width="3"/>
+  
+  <!-- Inner shield with flag colors -->
+  <rect x="35" y="35" width="30" height="6" fill="#000"/>
+  <rect x="35" y="41" width="30" height="6" fill="#dc2626"/>
+  <rect x="35" y="47" width="30" height="6" fill="#16a34a"/>
+  
+  <!-- Star accent -->
+  <circle cx="50" cy="65" r="8" fill="#16a34a"/>
+  <text x="50" y="70" font-size="12" fill="#fff" text-anchor="middle" font-weight="bold">S</text>
+</svg>
