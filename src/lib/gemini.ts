@@ -65,7 +65,7 @@ Use phrases like "Sasa basi!", "Hongera!", "Kweli!". Keep it respectful and educ
     const result = await Promise.race([
       model.generateContent(prompt),
       timeoutPromise
-    ]) as any;
+    ]) as { response: { text: () => string } };
     
     const response = await result.response;
     const text = response.text();

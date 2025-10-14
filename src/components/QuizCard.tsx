@@ -23,7 +23,7 @@ export default function QuizCard({
   const [isCorrect, setIsCorrect] = useState(false);
 
   // Normalize correctAnswer to a stable type for comparisons
-  const normalizedCorrectAnswer = useMemo(() => {
+  const normalizedCorrectAnswer: string | boolean = useMemo(() => {
     if (question.type === 'true_false') {
       const value = question.correctAnswer;
       if (typeof value === 'boolean') return value;
@@ -50,7 +50,7 @@ export default function QuizCard({
       }
       return s;
     }
-    return question.correctAnswer as string;
+    return typeof question.correctAnswer === 'string' ? question.correctAnswer : '';
   }, [question]);
 
   const handleAnswerSelect = (answer: string | boolean) => {

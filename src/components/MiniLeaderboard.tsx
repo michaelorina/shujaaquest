@@ -27,7 +27,7 @@ export default function MiniLeaderboard() {
   if (loading) {
     return (
       <div className="glass-card p-6">
-        <h3 className="text-lg font-bold text-zinc-100 mb-4">🏆 Today's Champions</h3>
+        <h3 className="text-lg font-bold text-zinc-100 mb-4">🏆 Today&apos;s Champions</h3>
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
             <div key={i} className="h-12 bg-zinc-800/50 rounded-lg animate-pulse" />
@@ -44,7 +44,7 @@ export default function MiniLeaderboard() {
       className="glass-card p-6"
     >
       <h3 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
-        🏆 Today's Champions
+        🏆 Today&apos;s Champions
       </h3>
       
       <div className="space-y-3">

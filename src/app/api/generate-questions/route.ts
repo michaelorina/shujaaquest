@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
     // If all else fails, return fallback questions directly
     try {
       const { getFallbackQuiz } = await import('@/lib/fallback-questions');
-      const fallbackData = getFallbackQuiz(heroName.trim());
+      // Re-parse body to safely access heroName here
+      const body: unknown = await request.json().catch(() => ({} as unknown));
+      const parsed = (body && typeof body === 'object') ? body as { heroName?: string } : {};
+      const name = typeof parsed.heroName === 'string' ? parsed.heroName : '';
+      const fallbackData = getFallbackQuiz(name.trim() || 'Kenyan Hero');
       return NextResponse.json(fallbackData);
     } catch (fallbackError) {
       console.error('Even fallback failed:', fallbackError);
