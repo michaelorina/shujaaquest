@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Rounded container for app icon shape -->
+  <rect width="128" height="128" rx="24" fill="#111418"/>
+
+  <!-- Kenyan flag stripes -->
+  <!-- Black (top) -->
+  <rect x="8" y="16" width="112" height="28" rx="6" fill="#000000"/>
+  <!-- White fimbriation above red -->
+  <rect x="8" y="44" width="112" height="4" fill="#ffffff"/>
+  <!-- Red (middle) -->
+  <rect x="8" y="48" width="112" height="28" fill="#bb0000"/>
+  <!-- White fimbriation below red -->
+  <rect x="8" y="76" width="112" height="4" fill="#ffffff"/>
+  <!-- Green (bottom) -->
+  <rect x="8" y="80" width="112" height="28" rx="6" fill="#006600"/>
+
+  <!-- Spears -->
+  <g stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
+    <line x1="26" y1="28" x2="102" y2="100"/>
+    <line x1="26" y1="100" x2="102" y2="28"/>
+  </g>
+
+  <!-- Maasai shield (center) -->
+  <!-- Outer white -->
+  <ellipse cx="64" cy="62" rx="20" ry="30" fill="#ffffff"/>
+  <!-- Red body -->
+  <ellipse cx="64" cy="62" rx="16" ry="26" fill="#bb0000"/>
+  <!-- Black vertical bar -->
+  <rect x="60.5" y="38" width="7" height="48" rx="3.5" fill="#000000"/>
+  <!-- White lacing marks -->
+  <g fill="#ffffff" opacity="0.95">
+    <circle cx="64" cy="48" r="1.5"/>
+    <circle cx="64" cy="56" r="1.5"/>
+    <circle cx="64" cy="64" r="1.5"/>
+    <circle cx="64" cy="72" r="1.5"/>
+    <circle cx="64" cy="80" r="1.5"/>
+  </g>
+</svg>
+

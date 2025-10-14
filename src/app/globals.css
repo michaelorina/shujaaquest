@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b0d10; /* deep charcoal */
+  --foreground: #e6edf3; /* off-white */
+  --card: #111418;
+  --muted: #94a3b8; /* slate-400 */
+  --primary: #16a34a; /* green-600 */
+  --accent: #dc2626; /* red-600 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Always dark theme for Mashujaa vibe */
+@media (prefers-color-scheme: dark) {
+  :root {}
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  scroll-behavior: smooth;
+}
+
+/* Custom styles for ShujaaQuest */
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-green-600 to-red-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 bg-transparent border-2 border-green-600 text-green-400 rounded-xl font-semibold hover:bg-green-600 hover:text-white transition-all duration-300;
+  }
+  
+  .card {
+    @apply rounded-2xl shadow-xl border border-zinc-800 bg-[color:var(--card)];
+  }
+  
+  .glass-card {
+    @apply rounded-2xl backdrop-blur-md bg-zinc-900/60 border border-zinc-800/50 shadow-2xl;
+  }
+  
+  .terminal-input {
+    @apply w-full px-4 py-3 bg-black/60 border border-emerald-500/30 rounded-lg text-emerald-400 font-mono placeholder-emerald-700 focus:border-emerald-500 focus:outline-none transition-all;
+  }
+  
+  .kenyan-flag-colors {
+    @apply bg-gradient-to-r from-emerald-600 via-red-600 to-black;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
