@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { leaderboard } from '../../../db/schema';
 import { desc, gte, sql } from 'drizzle-orm';
 
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     // Build query based on filter
     let scores;
     
+    const db = getDb();
     if (filter === 'today') {
       const today = new Date();
       today.setHours(0, 0, 0, 0);

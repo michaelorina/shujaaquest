@@ -149,7 +149,7 @@ export default function Home() {
                 <div className="mt-4 text-xs text-zinc-500">
                   <p className="mb-1">Popular heroes:</p>
                   <div className="flex flex-wrap gap-2">
-                    {['Wangari Maathai', 'Jomo Kenyatta', 'Eliud Kipchoge'].map(hero => (
+                    {['Wangari Maathai', 'Eliud Kipchoge', 'Abel Mutua'].map(hero => (
                       <button
                         key={hero}
                         type="button"

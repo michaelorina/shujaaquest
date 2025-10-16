@@ -1,6 +1,63 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getFallbackQuiz } from './fallback-questions';
 
+// Simple in-memory cache for generated quizzes
+const quizCache = new Map<string, QuizData>();
+
+// Function to generate first 3 questions quickly
+export async function generateInitialQuestions(heroName: string): Promise<Partial<QuizData>> {
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+  const prompt = `Create 3 quiz questions about ${heroName} for ShujaaQuest. Mix: 2 multiple choice (A-D), 1 true/false. Make them easy difficulty. Add Kenyan humor.
+
+Return JSON only:
+{
+  "heroName": "${heroName}",
+  "heroBio": "Brief bio",
+  "questions": [
+    {
+      "id": 1,
+      "question": "Question?",
+      "type": "multiple_choice",
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": "A",
+      "difficulty": "easy",
+      "explanation": "Short explanation",
+      "funnyCommentary": "Kenyan humor"
+    }
+  ]
+}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Could not extract JSON from Gemini response');
+    }
+    
+    const quizData = JSON.parse(jsonMatch[0]);
+    
+    if (!quizData.questions || !Array.isArray(quizData.questions)) {
+      throw new Error('Invalid quiz data structure from Gemini');
+    }
+    
+    return quizData;
+  } catch (error) {
+    console.error('Error generating initial questions:', error);
+    // Return fallback for first 3 questions
+    const fallback = getFallbackQuiz(heroName);
+    return {
+      heroName: fallback.heroName,
+      heroBio: fallback.heroBio,
+      questions: fallback.questions.slice(0, 3)
+    };
+  }
+}
+
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -27,39 +84,41 @@ export interface QuizData {
 }
 
 export async function generateQuiz(heroName: string): Promise<QuizData> {
+  // Check cache first
+  const cacheKey = heroName.toLowerCase().trim();
+  if (quizCache.has(cacheKey)) {
+    console.log(`Using cached quiz for ${heroName}`);
+    return quizCache.get(cacheKey)!;
+  }
+
   const genAI = getGeminiClient();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-  const prompt = `Create a quiz about ${heroName} for ShujaaQuest. Generate exactly 10 questions:
+  // Simplified, faster prompt
+  const prompt = `Create 10 quiz questions about ${heroName} for ShujaaQuest. Mix: 6 multiple choice (A-D), 4 true/false. Difficulty: easy (1-3), medium (4-7), hard (8-10). Add Kenyan humor.
 
-6 multiple choice (4 options A-D) and 4 true/false questions.
-Difficulty: easy (1-3), medium (4-7), hard (8-10).
-Include funny Kenyan commentary with Sheng slang.
-
-Return JSON format:
+Return JSON only:
 {
   "heroName": "${heroName}",
-  "heroBio": "Brief 2-sentence biography",
+  "heroBio": "Brief bio",
   "questions": [
     {
       "id": 1,
-      "question": "Question text?",
+      "question": "Question?",
       "type": "multiple_choice",
       "options": ["A", "B", "C", "D"],
       "correctAnswer": "A",
       "difficulty": "easy",
-      "explanation": "Brief explanation",
-      "funnyCommentary": "Funny Kenyan comment with Sheng"
+      "explanation": "Short explanation",
+      "funnyCommentary": "Kenyan humor"
     }
   ]
-}
-
-Use phrases like "Sasa basi!", "Hongera!", "Kweli!". Keep it respectful and educational.`;
+}`;
 
   try {
-    // Add timeout to prevent hanging
+    // 45 second timeout to allow Gemini to respond
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 45000); // 45 second timeout to allow Gemini to respond
+      setTimeout(() => reject(new Error('Request timeout')), 45000); // 45 second timeout
     });
     
     const result = await Promise.race([
@@ -82,6 +141,9 @@ Use phrases like "Sasa basi!", "Hongera!", "Kweli!". Keep it respectful and educ
     if (!quizData.questions || !Array.isArray(quizData.questions) || quizData.questions.length !== 10) {
       throw new Error('Invalid quiz data structure from Gemini');
     }
+    
+    // Cache the result
+    quizCache.set(cacheKey, quizData);
     
     return quizData;
   } catch (error) {

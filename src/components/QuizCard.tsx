@@ -10,13 +10,15 @@ interface QuizCardProps {
   questionNumber: number;
   totalQuestions: number;
   onAnswer: (isCorrect: boolean) => void;
+  isGeneratingMore?: boolean;
 }
 
 export default function QuizCard({ 
   question, 
   questionNumber, 
   totalQuestions, 
-  onAnswer 
+  onAnswer,
+  isGeneratingMore = false
 }: QuizCardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | boolean | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -124,9 +126,17 @@ export default function QuizCard({
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-zinc-300">
-            Question {questionNumber} of {totalQuestions}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-zinc-300">
+              Question {questionNumber} of {totalQuestions}
+            </span>
+            {isGeneratingMore && questionNumber === totalQuestions && (
+              <div className="flex items-center gap-1 text-xs text-emerald-400">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span>Generating more...</span>
+              </div>
+            )}
+          </div>
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${getDifficultyColor(question.difficulty)}`}>
             {question.difficulty.toUpperCase()}
           </span>

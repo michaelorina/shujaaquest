@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { leaderboard } from '../../../db/schema';
 import { count, gt } from 'drizzle-orm';
 
@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert score into database
+    const db = getDb();
     const result = await db.insert(leaderboard).values({
       playerName: playerName.trim(),
       heroName: heroName.trim(),

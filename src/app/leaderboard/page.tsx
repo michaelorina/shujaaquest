@@ -26,34 +26,38 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'today' | 'week'>('all');
 
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const fetchLeaderboard = useCallback(
+    async (silent: boolean = false) => {
+      try {
+        if (!silent) setIsLoading(true);
+        setError(null);
 
-      const response = await fetch(`/api/leaderboard?filter=${filter}&limit=50`, {
-        cache: 'no-store', // Disable caching to always get fresh data
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch leaderboard');
+        const response = await fetch(`/api/leaderboard?filter=${filter}&limit=50`, {
+          cache: 'no-store', // always fetch fresh data
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch leaderboard');
+        }
+
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error('Error fetching leaderboard:', err);
+        if (!silent) setError('Failed to load leaderboard. Please try again.');
+      } finally {
+        if (!silent) setIsLoading(false);
       }
-
-      const result = await response.json();
-      setData(result);
-    } catch (err) {
-      console.error('Error fetching leaderboard:', err);
-      setError('Failed to load leaderboard. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filter]);
+    },
+    [filter]
+  );
 
   useEffect(() => {
-    fetchLeaderboard();
-    
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(fetchLeaderboard, 10000);
+    // Initial visible load
+    fetchLeaderboard(false);
+
+    // Background refresh every 10s without toggling loading state
+    const interval = setInterval(() => fetchLeaderboard(true), 10000);
     return () => clearInterval(interval);
   }, [fetchLeaderboard]);
 
@@ -116,7 +120,7 @@ export default function LeaderboardPage() {
           <h2 className="text-2xl font-bold text-zinc-100 mb-4">Oops!</h2>
           <p className="text-zinc-300 mb-6">{error}</p>
           <button
-            onClick={fetchLeaderboard}
+            onClick={() => fetchLeaderboard(false)}
             className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
           >
             Try Again

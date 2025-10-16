@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { QuizQuestion } from '@/lib/gemini';
@@ -8,7 +8,7 @@ import QuizCard from '@/components/QuizCard';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import Confetti from '@/components/Confetti';
 import GuruAvatar from '@/components/GuruAvatar';
-import { getRandomFact } from '@/lib/kenya-facts';
+import LoadingTips from '@/components/LoadingTips';
 
 interface GameState {
   questions: QuizQuestion[];
@@ -17,6 +17,8 @@ interface GameState {
   correctAnswers: number;
   heroName: string;
   isGameComplete: boolean;
+  isGeneratingMore: boolean;
+  totalQuestionsExpected: number;
 }
 
 export default function GamePage() {
@@ -28,15 +30,55 @@ export default function GamePage() {
     correctAnswers: 0,
     heroName: '',
     isGameComplete: false,
+    isGeneratingMore: false,
+    totalQuestionsExpected: 10,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingFact, setLoadingFact] = useState(getRandomFact());
   const [error, setError] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showScoreSubmission, setShowScoreSubmission] = useState(false);
+  // removed old multi-step submit toggle
   const [playerName, setPlayerName] = useState('');
   const [isSubmittingScore, setIsSubmittingScore] = useState(false);
   const [submittedRank, setSubmittedRank] = useState<number | null>(null);
+
+  const initializeGame = useCallback(async (heroName: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // First, get initial 3 questions quickly
+      const initialResponse = await fetch('/api/generate-initial-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroName }),
+      });
+
+      if (!initialResponse.ok) {
+        throw new Error('Failed to generate initial questions');
+      }
+
+      const initialData = await initialResponse.json();
+
+      setGameState(prev => ({
+        ...prev,
+        questions: initialData.questions,
+        heroName: initialData.heroName ?? heroName,
+        isGameComplete: false,
+        isGeneratingMore: true,
+        totalQuestionsExpected: 10,
+      }));
+      
+      setIsLoading(false);
+
+      // Then, generate remaining questions in background
+      generateRemainingQuestions(heroName);
+      
+    } catch (err) {
+      console.error('Error initializing game:', err);
+      setError('Failed to load game. Please try again.');
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const selectedHero = sessionStorage.getItem('selectedHero');
@@ -45,23 +87,11 @@ export default function GamePage() {
       return;
     }
     initializeGame(selectedHero);
-  }, [router]);
+  }, [router, initializeGame]);
 
-  // Rotate fun facts while loading
-  useEffect(() => {
-    if (isLoading) {
-      const interval = setInterval(() => {
-        setLoadingFact(getRandomFact());
-      }, 4000);
-      return () => clearInterval(interval);
-    }
-  }, [isLoading]);
 
-  const initializeGame = async (heroName: string) => {
+  const generateRemainingQuestions = async (heroName: string) => {
     try {
-      setIsLoading(true);
-      setError(null);
-
       const quizResponse = await fetch('/api/generate-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,22 +99,25 @@ export default function GamePage() {
       });
 
       if (!quizResponse.ok) {
-        throw new Error('Failed to generate questions');
+        throw new Error('Failed to generate remaining questions');
       }
 
       const quizData = await quizResponse.json();
-
+      
+      // Replace with full quiz data
       setGameState(prev => ({
         ...prev,
         questions: quizData.questions,
-        heroName: quizData.heroName ?? heroName,
-        isGameComplete: false,
+        isGeneratingMore: false,
       }));
-      setIsLoading(false);
     } catch (err) {
-      console.error('Error initializing game:', err);
-      setError('Failed to load game. Please try again.');
-      setIsLoading(false);
+      console.error('Error generating remaining questions:', err);
+      // Keep the initial 3 questions, mark as complete
+      setGameState(prev => ({
+        ...prev,
+        isGeneratingMore: false,
+        totalQuestionsExpected: prev.questions.length,
+      }));
     }
   };
 
@@ -112,7 +145,7 @@ export default function GamePage() {
       const newScore = prev.score + pointsEarned;
       const newCorrectAnswers = prev.correctAnswers + (isCorrect ? 1 : 0);
       const nextQuestionIndex = prev.currentQuestionIndex + 1;
-      const isGameComplete = nextQuestionIndex >= prev.questions.length;
+      const isGameComplete = nextQuestionIndex >= prev.questions.length && !prev.isGeneratingMore;
 
       return {
         ...prev,
@@ -155,7 +188,6 @@ export default function GamePage() {
       
       const result = await response.json();
       setSubmittedRank(result.rank);
-      setShowScoreSubmission(false);
     } catch (error) {
       console.error('Error submitting score:', error);
     } finally {
@@ -171,23 +203,47 @@ export default function GamePage() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center max-w-md"
         >
-          <div className="glass-card p-8 mb-6">
-            <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-            <h2 className="text-2xl font-bold text-zinc-100 mb-4">Preparing Your Quest...</h2>
-            <div className="bg-zinc-900/50 p-4 rounded-lg border-l-4 border-l-emerald-500">
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={loadingFact}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-zinc-300 text-sm"
-                >
-                  💡 {loadingFact}
-                </motion.p>
-              </AnimatePresence>
+          <motion.div 
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900/90 via-zinc-800/70 to-zinc-900/90 backdrop-blur-2xl border border-white/20 shadow-2xl p-8 mb-6"
+            style={{
+              background: 'linear-gradient(135deg, rgba(24, 24, 27, 0.9) 0%, rgba(39, 39, 42, 0.7) 50%, rgba(24, 24, 27, 0.9) 100%)',
+              backdropFilter: 'blur(24px)',
+              boxShadow: '0 32px 64px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+            }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            {/* Animated background effects */}
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-red-500/10 animate-pulse" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 via-yellow-400 to-red-400 opacity-60" />
+            
+            {/* Floating elements */}
+            <div className="absolute top-6 right-6 w-3 h-3 bg-emerald-400/20 rounded-full animate-ping" />
+            <div className="absolute bottom-8 left-6 w-2 h-2 bg-red-400/30 rounded-full animate-bounce delay-700" />
+            
+            <div className="relative z-10 text-center">
+              <motion.h2 
+                className="text-3xl font-bold bg-gradient-to-r from-emerald-400 via-white to-red-400 bg-clip-text text-transparent mb-2"
+                animate={{ 
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] 
+                }}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+                style={{ backgroundSize: '200% 200%' }}
+              >
+                Preparing Your Quest...
+              </motion.h2>
+              <p className="text-zinc-300 text-sm">
+                Crafting personalized questions about your chosen hero
+              </p>
             </div>
-          </div>
+          </motion.div>
+          
+          <LoadingTips />
           
           <GuruAvatar message="Ngoja kidogo... I'm preparing some tough questions for you! 😄" size="medium" />
         </motion.div>
@@ -230,109 +286,65 @@ export default function GamePage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-2xl w-full"
+          className="max-w-md w-full"
         >
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200 }}
-              className="text-8xl mb-6"
-            >
-              🎉
-            </motion.div>
-            
-            <h1 className="text-4xl font-bold text-zinc-100 mb-4">
-              Quest Complete!
-            </h1>
-          </div>
-          
-          <div className="glass-card p-8 mb-6">
-            <h2 className="text-2xl font-bold text-emerald-400 mb-6 text-center">
-              {gameState.heroName}
-            </h2>
-            
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="text-center">
-                <div className="text-4xl font-black text-emerald-400">{gameState.score}</div>
-                <div className="text-sm text-zinc-400">Total Score</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-black text-red-400">
-                  {gameState.correctAnswers}/{gameState.questions.length}
-                </div>
-                <div className="text-sm text-zinc-400">Correct</div>
-              </div>
+          <div className="glass-card p-6 mb-4 text-center">
+            <h1 className="text-2xl font-bold text-zinc-100 mb-2">Quest Complete!</h1>
+            <p className="text-zinc-400 mb-4">{gameState.heroName}</p>
+            <div className="text-4xl font-black text-emerald-400">{gameState.score}</div>
+            <div className="text-sm text-zinc-400 mt-1">
+              {gameState.correctAnswers}/{gameState.questions.length} correct • {Math.round((gameState.correctAnswers / gameState.questions.length) * 100)}%
             </div>
-            
-            <div className="text-center text-lg font-semibold text-zinc-200 mb-4">
-              Accuracy: {Math.round((gameState.correctAnswers / gameState.questions.length) * 100)}%
-            </div>
-            
-            {submittedRank && (
-              <div className="bg-emerald-900/30 border border-emerald-500/50 rounded-lg p-4 mb-4">
-                <p className="text-emerald-300 font-semibold text-center">
-                  🏆 Rank #{submittedRank} on the leaderboard!
-                </p>
-              </div>
-            )}
           </div>
 
-          <div className="mb-6">
-            <GuruAvatar
-              message={gameState.correctAnswers > 7 ? "Wueh! You're a true historian! Hongera sana! 🎓" : gameState.correctAnswers > 5 ? "Poa! Good effort, keep learning about our shujaas! 📚" : "Sawa tu! More practice needed, lakini you tried! 💪"}
-              size="medium"
-            />
-          </div>
-          
-          {!submittedRank && !showScoreSubmission ? (
-            <button
-              onClick={() => setShowScoreSubmission(true)}
-              className="w-full mb-4 py-4 bg-gradient-to-r from-emerald-600 to-red-600 text-white rounded-lg font-bold hover:shadow-lg transition-all"
-            >
-              🏆 Submit to Leaderboard
-            </button>
-          ) : showScoreSubmission ? (
+          {/* Single input to submit name */}
+          {!submittedRank && (
             <div className="glass-card p-6 mb-4">
-              <h3 className="text-xl font-bold text-zinc-100 mb-4">Enter Your Name</h3>
+              <h3 className="text-lg font-bold text-zinc-100 mb-3">Enter Your Name</h3>
               <input
                 type="text"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="Your name..."
-                className="terminal-input mb-4"
+                className="terminal-input mb-3"
                 maxLength={50}
+                autoFocus
               />
-              <div className="flex gap-3">
-                <button
-                  onClick={submitScore}
-                  disabled={!playerName.trim() || isSubmittingScore}
-                  className="flex-1 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:bg-zinc-700 transition-colors"
-                >
-                  {isSubmittingScore ? 'Submitting...' : 'Submit'}
-                </button>
-                <button
-                  onClick={() => setShowScoreSubmission(false)}
-                  className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
+              <button
+                onClick={submitScore}
+                disabled={!playerName.trim() || isSubmittingScore}
+                className="w-full py-3 bg-emerald-600 text-white rounded font-mono text-sm hover:bg-emerald-700 transition-colors disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed"
+              >
+                {isSubmittingScore ? 'Submitting...' : 'Submit to Leaderboard'}
+              </button>
             </div>
-          ) : null}
-          
-          <div className="flex gap-4">
+          )}
+
+          {/* After submit: show actions */}
+          {submittedRank && (
+            <div className="glass-card p-4 mb-4 text-center text-emerald-300">
+              🏆 Submitted! You ranked #{submittedRank}.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-3">
             <button
               onClick={restartGame}
-              className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-red-600 text-white rounded-lg font-bold hover:shadow-lg transition-all"
+              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-red-600 text-white rounded-lg font-bold hover:shadow-lg transition-all"
             >
               🚀 Play Again
             </button>
             <button
               onClick={() => router.push('/leaderboard')}
-              className="flex-1 py-3 border-2 border-emerald-600 text-emerald-400 rounded-lg font-bold hover:bg-emerald-600 hover:text-white transition-all"
+              className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-lg font-bold hover:bg-zinc-800 transition-all"
             >
-              🏆 Leaderboard
+              🏆 View Leaderboard
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="w-full py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-lg font-bold hover:bg-zinc-800 transition-all"
+            >
+              ← Back Home
             </button>
           </div>
         </motion.div>
@@ -388,6 +400,7 @@ export default function GamePage() {
                 questionNumber={gameState.currentQuestionIndex + 1}
                 totalQuestions={gameState.questions.length}
                 onAnswer={handleAnswer}
+                isGeneratingMore={gameState.isGeneratingMore}
               />
             </AnimatePresence>
           </div>
